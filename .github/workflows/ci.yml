@@ -136,9 +136,14 @@ jobs:
       - run: rustup default stable
       - run: cargo fmt --all -- --check
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: build-only
       - run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - run: cargo doc --locked --no-deps --all-features
       - run: cargo package --locked -p tc_runtime
+        env:
+          # Keep unpacked package manifests outside rust-cache's build tree.
+          CARGO_TARGET_DIR: ${{ runner.temp }}/tc-runtime-package
 
   portable:
     name: Cross-architecture contracts
