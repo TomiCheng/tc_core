@@ -19,5 +19,17 @@ disable-x86-pclmulqdq-v256 = []
 disable-x86-pclmulqdq-v512 = []
 disable-x86-sse41 = []
 disable-x86-ssse3 = []
+disable-aarch64-aes = []
+disable-aarch64-dit = []
+disable-aarch64-neon = []
+disable-aarch64-sha2 = []
+disable-aarch64-sha3 = []
+disable-aarch64-sm4 = []
 
 [dependencies]
+
+# `cpufeatures` hard-errors on architectures it does not support, so it is
+# scoped to aarch64. It pulls in `libc` only on Linux, Android, and Apple
+# targets, which keeps every other build dependency-free.
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+cpufeatures = "0.3.1"

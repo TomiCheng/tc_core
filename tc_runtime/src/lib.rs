@@ -1,5 +1,22 @@
 //! Low-level runtime support for the `tc_rust` workspace.
 //!
+//! Capability tokens exist on every target, so a caller picks a backend without
+//! writing architecture `cfg` checks. The branches for other architectures fold
+//! away at compile time.
+//!
+//! ```
+//! use tc_runtime::intrinsics::{aarch64, x86};
+//!
+//! let backend = if x86::Pclmulqdq::detect().is_some() {
+//!     "pclmulqdq"
+//! } else if aarch64::Aes::detect().is_some() {
+//!     "pmull"
+//! } else {
+//!     "portable"
+//! };
+//! # let _ = backend;
+//! ```
+//!
 //! ```
 //! use tc_runtime::intrinsics::x86::{Aes, Avx2, Sse2};
 //!
