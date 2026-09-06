@@ -8,33 +8,26 @@
 //!
 //! Unlike x86, `aarch64` exposes no unprivileged feature-query instruction: the
 //! `ID_AA64ISAR*_EL1` registers are readable only at EL1. Detection therefore
-//! goes through the operating system, which the `cpufeatures` crate wraps.
-//! Detection needs no `std`, because the probe reaches the OS directly.
+//! goes through the operating system, behind a swappable backend seam.
+//! Detection needs no `std`.
 //!
 //! # Platform coverage
 //!
-//! `cpufeatures` probes Linux and Android through `getauxval(AT_HWCAP)`, and
-//! Apple platforms through `sysctlbyname`. Every other operating system,
-//! Windows on ARM included, reports each capability as unavailable, so those
-//! targets fall back to portable backends even on hardware that supports the
-//! instructions. Building with the matching `target_feature` enabled overrides
-//! that, because the probe then short-circuits to `true` at compile time.
+//! Every capability is available whenever the matching `target_feature` is
+//! enabled at compile time, because the compiler may then emit the instructions
+//! throughout the build. Targets such as `aarch64-apple-darwin` enable most of
+//! them by default.
+//!
+//! Beyond that floor, runtime detection depends on the selected backend. The
+//! default backend performs none, which keeps the crate dependency-free;
+//! `aarch64-detect` selects one that probes Linux, Android, and Apple
+//! platforms. No backend can probe Windows on ARM or bare-metal targets, so
+//! those rely on the compile-time floor alone.
 
 use super::detect::capability;
 
-// LLVM models `aarch64` target features more coarsely than the individual Arm
-// architectural features, so one probe can cover several of them. Each
-// capability below documents what its probe actually guarantees.
 #[cfg(target_arch = "aarch64")]
-cpufeatures::new!(probe_aes, "aes");
-#[cfg(target_arch = "aarch64")]
-cpufeatures::new!(probe_dit, "dit");
-#[cfg(target_arch = "aarch64")]
-cpufeatures::new!(probe_sha2, "sha2");
-#[cfg(target_arch = "aarch64")]
-cpufeatures::new!(probe_sha3, "sha3");
-#[cfg(target_arch = "aarch64")]
-cpufeatures::new!(probe_sm4, "sm4");
+mod backend;
 
 capability! {
     /// Proof that the processor can execute AES and polynomial-multiply
@@ -49,7 +42,7 @@ capability! {
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-aes",
     env = "TC_DISABLE_AARCH64_AES",
-    detect = probe_aes::get()
+    detect = backend::aes()
 }
 
 capability! {
@@ -63,7 +56,7 @@ capability! {
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-dit",
     env = "TC_DISABLE_AARCH64_DIT",
-    detect = probe_dit::get()
+    detect = backend::dit()
 }
 
 capability! {
@@ -91,7 +84,7 @@ capability! {
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-sha2",
     env = "TC_DISABLE_AARCH64_SHA2",
-    detect = probe_sha2::get()
+    detect = backend::sha2()
 }
 
 capability! {
@@ -105,20 +98,20 @@ capability! {
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-sha3",
     env = "TC_DISABLE_AARCH64_SHA3",
-    detect = probe_sha3::get()
+    detect = backend::sha3()
 }
 
 capability! {
     /// Proof that the processor can execute SM3 and SM4 instructions.
     ///
-    /// This covers `FEAT_SM3` and `FEAT_SM4`. Apple platforms always report it
-    /// as unavailable.
+    /// This covers `FEAT_SM3` and `FEAT_SM4`. The `aarch64-detect` backend
+    /// reports it as unavailable on Apple platforms.
     Sm4,
     SM4_CACHE,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-sm4",
     env = "TC_DISABLE_AARCH64_SM4",
-    detect = probe_sm4::get()
+    detect = backend::sm4()
 }
 
 #[cfg(test)]
@@ -139,6 +132,28 @@ mod tests {
     #[test]
     fn aarch64_baseline_supports_neon() {
         assert!(Neon::is_enabled());
+    }
+
+    /// A feature the compiler may already emit stays available whichever
+    /// backend is selected, including the one that probes nothing.
+    #[cfg(target_arch = "aarch64")]
+    #[test]
+    fn enabled_target_features_survive_every_backend() {
+        macro_rules! floor {
+            ($($ty:ty, $tf:literal, $off:literal);+ $(;)?) => {$(
+                if cfg!(target_feature = $tf) && !cfg!(feature = $off) {
+                    assert!(<$ty>::is_enabled(), concat!($tf, " is compiled in"));
+                }
+            )+};
+        }
+
+        floor! {
+            Aes, "aes", "disable-aarch64-aes";
+            Dit, "dit", "disable-aarch64-dit";
+            Sha2, "sha2", "disable-aarch64-sha2";
+            Sha3, "sha3", "disable-aarch64-sha3";
+            Sm4, "sm4", "disable-aarch64-sm4";
+        }
     }
 
     #[cfg(any(

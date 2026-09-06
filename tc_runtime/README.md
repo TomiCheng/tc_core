@@ -3,10 +3,10 @@
 `tc_runtime` provides algorithm-independent runtime support for the `tc_rust`
 workspace. It is `no_std` unless its optional `std` feature is enabled.
 
-x86 builds are dependency-free. aarch64 builds depend on
+It has no dependencies by default, on any target. Opting into aarch64 runtime
+detection with `aarch64-detect` adds
 [`cpufeatures`](https://crates.io/crates/cpufeatures), which in turn pulls in
-`libc` on Linux, Android, and Apple targets only; every other target, bare-metal
-aarch64 included, stays dependency-free. Neither dependency requires `std`.
+`libc` on Linux, Android, and Apple targets only. Neither requires `std`.
 
 The x86 API mirrors the capabilities currently queried by Bouncy Castle's
 `Org.BouncyCastle.Runtime.Intrinsics.X86` namespace. Every capability provides:
@@ -66,8 +66,8 @@ those instructions safely.
 ## aarch64 capabilities
 
 aarch64 exposes no unprivileged feature-query instruction — the
-`ID_AA64ISAR*_EL1` registers are readable only at EL1 — so detection goes
-through the operating system rather than an equivalent of CPUID.
+`ID_AA64ISAR*_EL1` registers are readable only at EL1 — so runtime detection
+goes through the operating system rather than an equivalent of CPUID.
 
 LLVM models aarch64 target features more coarsely than the individual Arm
 architectural features, so one capability can cover several of them:
@@ -85,17 +85,46 @@ There is deliberately no separate `Pmull` capability: Linux requires both the
 `HWCAP_AES` and `HWCAP_PMULL` bits, so a GHASH backend takes the `Aes` token.
 For the same reason a SHA-512 backend takes the `Sha3` token.
 
-### Platform coverage
+### Detection backends
 
-Detection reads `getauxval(AT_HWCAP)` on Linux and Android, and `sysctlbyname`
-on Apple platforms. **Every other operating system, Windows on ARM included,
-reports each capability as unavailable**, so those targets fall back to portable
-backends even on hardware that supports the instructions. Building with the
-matching `target_feature` enabled overrides this, because the probe then
-short-circuits to `true` at compile time.
+A capability is available whenever the matching `target_feature` is enabled at
+compile time, because the compiler may then emit those instructions throughout
+the build. This floor applies whichever backend is selected, and costs nothing
+at run time. Several targets set most of these by default:
 
-Unlike the x86 module's use of CPUID, none of this requires `std`; the probe
+| Target | Default `target_feature` |
+| --- | --- |
+| `aarch64-apple-darwin` | `aes`, `dit`, `neon`, `sha2`, `sha3`, and more |
+| `aarch64-unknown-linux-gnu` | `neon` |
+| `aarch64-unknown-none` | `neon` |
+| `aarch64-pc-windows-msvc` | `neon` |
+
+Runtime detection beyond that floor is a swappable backend:
+
+| Backend | Cargo feature | Covers |
+| --- | --- | --- |
+| none (default) | — | nothing beyond the floor; no dependencies |
+| `cpufeatures` | `aarch64-detect` | Linux and Android via `getauxval(AT_HWCAP)`, Apple platforms via `sysctlbyname` |
+
+**No backend can probe Windows on ARM or bare-metal targets**, which therefore
+rely on the compile-time floor alone; `aarch64-detect` buys them nothing. On
+`aarch64-apple-darwin` the floor already covers the features the backend would
+report, so it changes nothing there either. In practice the feature matters on
+Linux and Android.
+
+Unlike the x86 module's use of CPUID, none of this requires `std`; a backend
 reaches the operating system directly.
+
+Backends live in `src/intrinsics/aarch64/backend.rs`, behind a contract of one
+`fn() -> bool` per feature. Replacing one does not affect the public API.
+
+## Cargo features
+
+| Feature | Effect |
+| --- | --- |
+| `std` | Enables the `TC_DISABLE_*` environment-variable overrides |
+| `aarch64-detect` | Selects a runtime-detection backend for aarch64 |
+| `disable-*` | Turns individual capabilities off; see below |
 
 ## Disabling optimized backends
 
