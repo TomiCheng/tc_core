@@ -70,6 +70,27 @@ fn detect_agrees_with_is_enabled() {
     assert_eq!(Ssse3::detect().is_some(), Ssse3::is_enabled());
 }
 
+#[cfg(target_arch = "x86")]
+#[test]
+fn x64_only_tokens_are_unavailable_in_a_32_bit_process() {
+    assert_eq!(core::mem::size_of::<usize>(), 4);
+    assert!(!Bmi1X64::is_enabled());
+    assert!(!Bmi2X64::is_enabled());
+    assert_eq!(Bmi1X64::detect(), None);
+    assert_eq!(Bmi2X64::detect(), None);
+}
+
+// With no overrides, compare the 32-bit CPUID path against Rust's detector.
+#[cfg(all(
+    target_arch = "x86",
+    not(feature = "std"),
+    not(feature = "disable-x86-sse2")
+))]
+#[test]
+fn x86_sse2_matches_standard_library_detection() {
+    assert_eq!(Sse2::is_enabled(), std::is_x86_feature_detected!("sse2"));
+}
+
 /// `is_enabled` is a `const fn` off x86, so callers can branch at compile time.
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 #[test]

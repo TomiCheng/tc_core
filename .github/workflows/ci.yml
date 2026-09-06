@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, main]
   pull_request:
-    branches: [develop]
+    branches: [develop, main]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: Linux x64 default
+            os: ubuntu-latest
+            host: x86_64-unknown-linux-gnu
+            args: ''
           - name: Linux x64 all features
             os: ubuntu-latest
             host: x86_64-unknown-linux-gnu
@@ -62,15 +66,35 @@ jobs:
           rustup default stable-${{ matrix.host }}
           rustc -vV
           rustc -vV | grep -Fx 'host: ${{ matrix.host }}'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
       - run: cargo test --locked ${{ matrix.args }}
       - name: Sample x86 switches
-        if: matrix.host == 'x86_64-unknown-linux-gnu'
+        if: matrix.name == 'Linux x64 all features'
         run: |
           cargo test --locked --features std,disable-x86-avx2
           cargo test --locked --features std,disable-x86-pclmulqdq
       - name: Sample ARM switch
         if: matrix.name == 'Linux ARM64 runtime detection'
         run: cargo test --locked --features std,aarch64-detect,disable-aarch64-aes
+
+  x86:
+    name: Native execution / Linux i686
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install 32-bit compiler and runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-multilib
+      - run: rustup toolchain install stable --profile minimal
+      - run: rustup default stable
+      - run: rustup target add i686-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --locked --target i686-unknown-linux-gnu
+      - run: cargo test --locked --target i686-unknown-linux-gnu --features std
 
   msrv:
     name: MSRV / Rust 1.85.0
@@ -79,6 +103,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: rustup toolchain install 1.85.0 --profile minimal
+      - uses: Swatinem/rust-cache@v2
+        env:
+          RUSTUP_TOOLCHAIN: 1.85.0
       - run: cargo +1.85.0 test --locked --all-features
 
   floor:
@@ -93,6 +120,7 @@ jobs:
       - run: rustup default stable
       - run: |
           rustc -vV | grep -Fx 'host: aarch64-unknown-linux-gnu'
+      - uses: Swatinem/rust-cache@v2
       - name: Test floor without runtime backend
         run: cargo test --locked
 
@@ -107,6 +135,7 @@ jobs:
       - run: rustup toolchain install stable --profile minimal --component rustfmt,clippy
       - run: rustup default stable
       - run: cargo fmt --all -- --check
+      - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - run: cargo doc --locked --no-deps --all-features
       - run: cargo package --locked -p tc_runtime
@@ -120,6 +149,7 @@ jobs:
       - run: rustup toolchain install stable --profile minimal
       - run: rustup default stable
       - run: rustup target add wasm32-unknown-unknown aarch64-unknown-none
+      - uses: Swatinem/rust-cache@v2
       - run: cargo check --locked --target wasm32-unknown-unknown --all-features
       - run: cargo check --locked --target aarch64-unknown-none
       - run: cargo check --locked --target aarch64-unknown-none --features aarch64-detect
@@ -127,3 +157,12 @@ jobs:
         run: |
           test "$(cargo tree --locked -p tc_runtime --target aarch64-unknown-none --edges normal --prefix none | wc -l)" -eq 1
           test "$(cargo tree --locked -p tc_runtime --target wasm32-unknown-unknown --edges normal --prefix none | wc -l)" -eq 1
+      - name: Check bare-metal backend has only cpufeatures
+        run: |
+          tree="$(cargo tree --locked -p tc_runtime --target aarch64-unknown-none --features aarch64-detect --edges normal --prefix none)"
+          test "$(printf '%s\n' "$tree" | wc -l)" -eq 2
+          printf '%s\n' "$tree" | grep -E '^cpufeatures v'
+          if printf '%s\n' "$tree" | grep -qE '^libc v'; then
+            echo 'bare-metal backend must not depend on libc' >&2
+            exit 1
+          fi
