@@ -1,8 +1,9 @@
 [package]
 name = "tc_runtime"
-description = "Low-level runtime support for the tc_rust workspace."
+description = "no_std CPU feature detection and capability proof tokens for x86 and AArch64."
 version = "0.1.0"
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 

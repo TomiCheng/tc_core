@@ -1,4 +1,8 @@
-//! Low-level runtime support for the `tc_rust` workspace.
+//! CPU feature detection and capability proof tokens for x86 and AArch64.
+//!
+//! This crate is `no_std` by default and has no default dependencies. The `std`
+//! feature enables environment-variable overrides; `aarch64-detect` enables
+//! optional runtime detection on supported AArch64 operating systems.
 //!
 //! Capability tokens exist on every target, so a caller picks a backend without
 //! writing architecture `cfg` checks. The branches for other architectures fold

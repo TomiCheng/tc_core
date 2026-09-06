@@ -13,23 +13,35 @@ use core::arch::x86::{__cpuid, __cpuid_count, __get_cpuid_max, _xgetbv};
 use core::arch::x86_64::{__cpuid, __cpuid_count, __get_cpuid_max, _xgetbv};
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf1_ecx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 1 && (__cpuid(1).ecx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 1 && (__cpuid(1).ecx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf1_edx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 1 && (__cpuid(1).edx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 1 && (__cpuid(1).edx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf7_ebx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ebx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ebx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf7_ecx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ecx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ecx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

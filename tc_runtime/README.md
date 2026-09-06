@@ -1,7 +1,9 @@
 # tc_runtime
 
-`tc_runtime` provides algorithm-independent runtime support for the `tc_rust`
-workspace. It is `no_std` unless its optional `std` feature is enabled.
+`tc_runtime` provides CPU feature detection and capability proof tokens for x86
+and AArch64. Callers use these tokens to select supported optimized backends.
+It is `no_std` unless its optional `std` feature is enabled, and supports Rust
+1.85 and later.
 
 It has no dependencies by default, on any target. Opting into aarch64 runtime
 detection with `aarch64-detect` adds
