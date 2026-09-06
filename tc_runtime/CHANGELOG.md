@@ -2,15 +2,11 @@
 
 All notable changes to `tc_runtime` are documented in this file.
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-09-06
 
-Initial release, prepared for publication on crates.io.
+Initial release.
 
 ### Added
-
-- Native CI on Linux x64 and ARM64, macOS ARM64, and Windows ARM64, with
-  Rust 1.85 regression checks, compile-time feature-floor tests, and portable
-  target checks.
 
 - CPU capability detection for x86 and x86_64: AES-NI, AVX2, BMI1 in
   64-bit mode, BMI2, PCLMULQDQ at 128/256/512-bit widths, SSE2, SSE4.1,
@@ -29,6 +25,11 @@ Initial release, prepared for publication on crates.io.
 - Caller-facing API documentation and executable examples covering token
   passing, portable fallback, capability aliases, and token construction
   restrictions.
+- Native CI on Linux x64, i686 and ARM64, macOS ARM64, and Windows ARM64,
+  with Rust 1.85 regression checks, portable target checks, and compile-time
+  feature-floor tests that record a coverage note when a runner lacks the
+  hardware. x86 detection is cross-checked against the standard library's
+  independent detector.
 
 ### Compatibility
 
