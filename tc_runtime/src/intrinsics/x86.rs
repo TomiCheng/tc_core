@@ -5,62 +5,43 @@
 //! A successful [`detect`](Sse2::detect) call returns a proof token that can be
 //! passed to code whose safety contract requires the corresponding feature.
 
+use super::detect::capability;
+
 #[cfg(target_arch = "x86")]
 use core::arch::x86::{__cpuid, __cpuid_count, __get_cpuid_max, _xgetbv};
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::{__cpuid, __cpuid_count, __get_cpuid_max, _xgetbv};
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use core::sync::atomic::{AtomicU8, Ordering};
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-const UNKNOWN: u8 = 0;
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-const DISABLED: u8 = 1;
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-const ENABLED: u8 = 2;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn cached(cache: &AtomicU8, detect: impl FnOnce() -> bool) -> bool {
-    match cache.load(Ordering::Relaxed) {
-        ENABLED => true,
-        DISABLED => false,
-        UNKNOWN => {
-            let enabled = detect();
-            cache.store(if enabled { ENABLED } else { DISABLED }, Ordering::Relaxed);
-            enabled
-        }
-        _ => unreachable!(),
-    }
-}
-
-#[cfg(feature = "std")]
-fn disabled_by_env(name: &str) -> bool {
-    std::env::var_os(name).is_some()
-}
-
-#[cfg(not(feature = "std"))]
-const fn disabled_by_env(_name: &str) -> bool {
-    false
-}
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf1_ecx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 1 && (__cpuid(1).ecx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 1 && (__cpuid(1).ecx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf1_edx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 1 && (__cpuid(1).edx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 1 && (__cpuid(1).edx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf7_ebx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ebx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ebx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused_unsafe)] // CPUID intrinsics are unsafe on the Rust 1.85 MSRV.
 fn leaf7_ecx_has(bit: u32) -> bool {
-    __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ecx & (1 << bit)) != 0
+    // SAFETY: CPUID is available on supported x86 targets. The maximum-leaf
+    // check guards the requested leaf; these queries do not access memory.
+    unsafe { __get_cpuid_max(0).0 >= 7 && (__cpuid_count(7, 0).ecx & (1 << bit)) != 0 }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -90,60 +71,24 @@ fn avx512_state_enabled() -> bool {
         && xcr0().is_some_and(|value| value & XMM_YMM_OPMASK_AND_ZMM == XMM_YMM_OPMASK_AND_ZMM)
 }
 
-macro_rules! capability {
-    (
-        $(#[$meta:meta])*
-        $name:ident,
-        $cache:ident,
-        feature = $feature:literal,
-        env = $env:literal,
-        detect = $detect:expr
-    ) => {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        static $cache: AtomicU8 = AtomicU8::new(UNKNOWN);
-
-        $(#[$meta])*
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        pub struct $name(());
-
-        impl $name {
-            /// Detects the capability and returns a proof token when available.
-            pub fn detect() -> Option<Self> {
-                Self::is_enabled().then_some(Self(()))
-            }
-
-            /// Reports whether the capability is enabled on this processor.
-            ///
-            /// A matching `disable-x86-*` Cargo feature always returns `false`.
-            /// With this crate's `std` feature enabled, the matching
-            /// `TC_DISABLE_X86_*` environment variable has the same effect when
-            /// it is present before the first call.
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-            pub fn is_enabled() -> bool {
-                cached(&$cache, || {
-                    !cfg!(feature = $feature) && !disabled_by_env($env) && $detect
-                })
-            }
-
-            /// Reports whether the capability is enabled on this processor.
-            #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-            pub const fn is_enabled() -> bool {
-                false
-            }
-        }
-    };
-}
-
 capability! {
     /// Proof that the current processor can execute AES-NI instructions.
     Aes,
     AES_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-aes-ni",
     env = "TC_DISABLE_X86_AES_NI",
     detect = leaf1_ecx_has(25)
 }
 
 /// Backward-compatible name for [`Aes`].
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{Aes, AesNi};
+/// let token: Option<Aes> = AesNi::detect();
+/// assert_eq!(token, Aes::detect());
+/// ```
 pub type AesNi = Aes;
 
 capability! {
@@ -153,6 +98,8 @@ capability! {
     /// required for safely executing AVX-family instructions.
     Avx2,
     AVX2_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-avx2",
     env = "TC_DISABLE_X86_AVX2",
     detect = avx_state_enabled() && leaf7_ebx_has(5)
@@ -165,6 +112,8 @@ capability! {
     /// unavailable on 32-bit x86, even when that processor supports BMI1.
     Bmi1X64,
     BMI1_X64_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-bmi1",
     env = "TC_DISABLE_X86_BMI1",
     detect = cfg!(target_arch = "x86_64") && leaf7_ebx_has(3)
@@ -174,6 +123,8 @@ capability! {
     /// Proof that the current processor can execute BMI2 instructions.
     Bmi2,
     BMI2_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-bmi2",
     env = "TC_DISABLE_X86_BMI2",
     detect = leaf7_ebx_has(8)
@@ -183,6 +134,8 @@ capability! {
     /// Proof that BMI2 instructions are available in 64-bit mode.
     Bmi2X64,
     BMI2_X64_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-bmi2",
     env = "TC_DISABLE_X86_BMI2",
     detect = cfg!(target_arch = "x86_64") && leaf7_ebx_has(8)
@@ -192,6 +145,8 @@ capability! {
     /// Proof that 128-bit PCLMULQDQ carry-less multiplication is available.
     Pclmulqdq,
     PCLMULQDQ_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-pclmulqdq",
     env = "TC_DISABLE_X86_PCLMULQDQ",
     detect = leaf1_ecx_has(1)
@@ -204,6 +159,8 @@ capability! {
     /// saving XMM/YMM state.
     PclmulqdqV256,
     PCLMULQDQ_V256_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-pclmulqdq-v256",
     env = "TC_DISABLE_X86_PCLMULQDQ_V256",
     detect = Pclmulqdq::is_enabled() && avx_state_enabled() && leaf7_ecx_has(10)
@@ -216,6 +173,8 @@ capability! {
     /// saving opmask and ZMM state.
     PclmulqdqV512,
     PCLMULQDQ_V512_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-pclmulqdq-v512",
     env = "TC_DISABLE_X86_PCLMULQDQ_V512",
     detect = Pclmulqdq::is_enabled()
@@ -231,6 +190,8 @@ capability! {
     /// checks CPUID leaf 1 EDX bit 26.
     Sse2,
     SSE2_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-sse2",
     env = "TC_DISABLE_X86_SSE2",
     detect = cfg!(target_arch = "x86_64") || leaf1_edx_has(26)
@@ -240,6 +201,8 @@ capability! {
     /// Proof that the current processor can execute SSE4.1 instructions.
     Sse41,
     SSE41_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-sse41",
     env = "TC_DISABLE_X86_SSE41",
     detect = leaf1_ecx_has(19)
@@ -249,22 +212,48 @@ capability! {
     /// Proof that the current processor can execute SSSE3 instructions.
     Ssse3,
     SSSE3_CACHE,
+    module = x86,
+    arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-ssse3",
     env = "TC_DISABLE_X86_SSSE3",
     detect = leaf1_ecx_has(9)
 }
 
 /// Bouncy Castle-compatible BMI1 capability grouping.
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{bmi1, Bmi1X64};
+/// let token: Option<Bmi1X64> = bmi1::X64::detect();
+/// assert_eq!(token, Bmi1X64::detect());
+/// ```
 pub mod bmi1 {
     pub use super::Bmi1X64 as X64;
 }
 
 /// Bouncy Castle-compatible BMI2 capability grouping.
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{bmi2, Bmi2X64};
+/// let token: Option<Bmi2X64> = bmi2::X64::detect();
+/// assert_eq!(token, Bmi2X64::detect());
+/// ```
 pub mod bmi2 {
     pub use super::Bmi2X64 as X64;
 }
 
 /// Bouncy Castle-compatible PCLMULQDQ vector-width grouping.
+///
+/// Each width must be detected separately; a 128-bit token does not establish
+/// support for 256-bit or 512-bit instructions. The general
+/// `disable-x86-pclmulqdq` feature disables all three widths.
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{pclmulqdq, PclmulqdqV256, PclmulqdqV512};
+/// let v256: Option<PclmulqdqV256> = pclmulqdq::V256::detect();
+/// let v512: Option<PclmulqdqV512> = pclmulqdq::V512::detect();
+/// assert_eq!(v256, PclmulqdqV256::detect());
+/// assert_eq!(v512, PclmulqdqV512::detect());
+/// ```
 pub mod pclmulqdq {
     pub use super::{PclmulqdqV256 as V256, PclmulqdqV512 as V512};
 }

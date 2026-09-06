@@ -1,14 +1,20 @@
 [package]
 name = "tc_runtime"
-description = "Low-level runtime support for the tc_rust workspace."
+description = "no_std CPU feature detection and capability proof tokens for x86 and AArch64."
 version = "0.1.0"
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+keywords = ["cpu", "intrinsics", "no-std", "simd", "runtime-detection"]
+categories = ["hardware-support", "no-std"]
 
 [features]
 default = []
 std = []
+# Selects a runtime-detection backend for aarch64. Without it the compile-time
+# `target_feature` floor is the only source of aarch64 capabilities.
+aarch64-detect = ["dep:cpufeatures"]
 disable-x86-sse2 = []
 disable-x86-aes-ni = []
 disable-x86-avx2 = []
@@ -19,5 +25,18 @@ disable-x86-pclmulqdq-v256 = []
 disable-x86-pclmulqdq-v512 = []
 disable-x86-sse41 = []
 disable-x86-ssse3 = []
+disable-aarch64-aes = []
+disable-aarch64-dit = []
+disable-aarch64-neon = []
+disable-aarch64-sha2 = []
+disable-aarch64-sha3 = []
+disable-aarch64-sm4 = []
 
 [dependencies]
+
+# Backs the `aarch64-detect` feature. `cpufeatures` hard-errors on
+# architectures it does not support, so it is scoped to aarch64; it pulls in
+# `libc` only on Linux, Android, and Apple targets. Swapping this backend out
+# is confined to `src/intrinsics/aarch64/backend.rs`.
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+cpufeatures = { version = "0.3.1", optional = true }
