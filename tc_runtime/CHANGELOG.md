@@ -8,6 +8,10 @@ Initial release, prepared for publication on crates.io.
 
 ### Added
 
+- Native CI on Linux x64 and ARM64, macOS ARM64, and Windows ARM64, with
+  Rust 1.85 regression checks, compile-time feature-floor tests, and portable
+  target checks.
+
 - CPU capability detection for x86 and x86_64: AES-NI, AVX2, BMI1 in
   64-bit mode, BMI2, PCLMULQDQ at 128/256/512-bit widths, SSE2, SSE4.1,
   and SSSE3. AVX-family probes check the required operating-system state.

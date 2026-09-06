@@ -130,7 +130,17 @@ Backends live in `src/intrinsics/aarch64/backend.rs`, behind a contract of one
 
 ## Disabling optimized backends
 
-Each instruction-set backend can be disabled at compile time:
+Use these switches to exercise portable fallback paths in tests, or to
+temporarily avoid an optimized backend while investigating a defect. They
+control capability-based backend selection; they are not CPU tuning settings.
+
+With `std` enabled, environment overrides let operators disable individual
+backends **without rebuilding**. Set them **before starting the process**, then
+restart the application. Detection results are cached: changing the environment
+of an already-running process is not a supported way to switch backends.
+
+Cargo `disable-*` features apply at build time and require a rebuild. Both forms
+are listed below:
 
 | Capability | Cargo feature | Runtime environment variable with `std` |
 | --- | --- | --- |
@@ -159,7 +169,8 @@ cargo build --features tc_runtime/disable-x86-pclmulqdq
 cargo build --features tc_runtime/disable-aarch64-aes
 ```
 
-Runtime environment variables are read only when the `std` feature is enabled:
+For an existing build with `std` enabled, set one or more of these variables in
+the service configuration or launching shell before restarting the application:
 
 ```text
 TC_DISABLE_X86_AVX2=1
@@ -171,6 +182,10 @@ The presence of a variable disables the matching capability regardless of its
 value. Results are cached, so changing an environment variable after the first
 check has no effect. The general PCLMULQDQ switch also disables its V256 and
 V512 capabilities.
+
+There is currently no global disable switch. If the affected backend is unknown,
+set all applicable `TC_DISABLE_*` variables listed above before restarting.
+The application must provide portable fallbacks for the capabilities it uses.
 
 These switches prevent callers from selecting the matching optimized backend;
 they do not guarantee that the Rust compiler emits no instructions belonging

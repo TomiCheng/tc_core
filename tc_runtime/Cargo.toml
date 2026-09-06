@@ -6,6 +6,8 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+keywords = ["cpu", "intrinsics", "no-std", "simd", "runtime-detection"]
+categories = ["hardware-support", "no-std"]
 
 [features]
 default = []
