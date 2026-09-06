@@ -23,6 +23,41 @@
 //! `aarch64-detect` selects one that probes Linux, Android, and Apple
 //! platforms. No backend can probe Windows on ARM or bare-metal targets, so
 //! those rely on the compile-time floor alone.
+//!
+//! # Choosing capability tokens
+//!
+//! | Backend instructions | Required token |
+//! | --- | --- |
+//! | AES or PMULL (for example, GHASH) | [`Aes`] |
+//! | SHA-1 or SHA-256 | [`Sha2`] |
+//! | SHA-3 or SHA-512 | [`Sha3`] |
+//! | SM3 or SM4 | [`Sm4`] |
+//! | Advanced SIMD | [`Neon`] |
+//! | Data-independent timing support | [`Dit`] |
+//!
+//! The following illustrates backend selection, not cryptographic operations.
+//! The same `Aes` token can be passed to both AES and PMULL backends. SHA-512
+//! requires `Sha3`, rather than `Sha2`:
+//!
+//! ```
+//! use tc_runtime::intrinsics::aarch64::{Aes, Sha3};
+//!
+//! fn select_aes(_proof: Aes) -> &'static str { "aes" }
+//! fn select_ghash(_proof: Aes) -> &'static str { "pmull" }
+//! fn select_sha512(_proof: Sha3) -> &'static str { "sha512" }
+//!
+//! let (aes, ghash) = match Aes::detect() {
+//!     Some(proof) => (select_aes(proof), select_ghash(proof)),
+//!     None => ("portable", "portable"),
+//! };
+//! let sha512 = Sha3::detect().map(select_sha512).unwrap_or("portable");
+//! assert_eq!(aes == "aes", Aes::is_enabled());
+//! assert_eq!(ghash == "pmull", Aes::is_enabled());
+//! assert_eq!(sha512 == "sha512", Sha3::is_enabled());
+//! ```
+//!
+//! A `Dit` token establishes support only: detection does not set `PSTATE.DIT`.
+//! Callers must enable that state before relying on its timing guarantees.
 
 use super::detect::capability;
 
@@ -39,6 +74,7 @@ capability! {
     /// separate `Pmull` capability, so a GHASH backend takes this token.
     Aes,
     AES_CACHE,
+    module = aarch64,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-aes",
     env = "TC_DISABLE_AARCH64_AES",
@@ -53,6 +89,7 @@ capability! {
     /// implementations can rely on once `PSTATE.DIT` is set.
     Dit,
     DIT_CACHE,
+    module = aarch64,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-dit",
     env = "TC_DISABLE_AARCH64_DIT",
@@ -69,6 +106,7 @@ capability! {
     /// backend off.
     Neon,
     NEON_CACHE,
+    module = aarch64,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-neon",
     env = "TC_DISABLE_AARCH64_NEON",
@@ -81,6 +119,7 @@ capability! {
     /// This covers `FEAT_SHA1` and `FEAT_SHA256`.
     Sha2,
     SHA2_CACHE,
+    module = aarch64,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-sha2",
     env = "TC_DISABLE_AARCH64_SHA2",
@@ -95,6 +134,7 @@ capability! {
     /// SHA-512 backend takes this token as well.
     Sha3,
     SHA3_CACHE,
+    module = aarch64,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-sha3",
     env = "TC_DISABLE_AARCH64_SHA3",
@@ -108,6 +148,7 @@ capability! {
     /// reports it as unavailable on Apple platforms.
     Sm4,
     SM4_CACHE,
+    module = aarch64,
     arch = target_arch = "aarch64",
     feature = "disable-aarch64-sm4",
     env = "TC_DISABLE_AARCH64_SM4",

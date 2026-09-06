@@ -75,6 +75,7 @@ capability! {
     /// Proof that the current processor can execute AES-NI instructions.
     Aes,
     AES_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-aes-ni",
     env = "TC_DISABLE_X86_AES_NI",
@@ -82,6 +83,12 @@ capability! {
 }
 
 /// Backward-compatible name for [`Aes`].
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{Aes, AesNi};
+/// let token: Option<Aes> = AesNi::detect();
+/// assert_eq!(token, Aes::detect());
+/// ```
 pub type AesNi = Aes;
 
 capability! {
@@ -91,6 +98,7 @@ capability! {
     /// required for safely executing AVX-family instructions.
     Avx2,
     AVX2_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-avx2",
     env = "TC_DISABLE_X86_AVX2",
@@ -104,6 +112,7 @@ capability! {
     /// unavailable on 32-bit x86, even when that processor supports BMI1.
     Bmi1X64,
     BMI1_X64_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-bmi1",
     env = "TC_DISABLE_X86_BMI1",
@@ -114,6 +123,7 @@ capability! {
     /// Proof that the current processor can execute BMI2 instructions.
     Bmi2,
     BMI2_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-bmi2",
     env = "TC_DISABLE_X86_BMI2",
@@ -124,6 +134,7 @@ capability! {
     /// Proof that BMI2 instructions are available in 64-bit mode.
     Bmi2X64,
     BMI2_X64_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-bmi2",
     env = "TC_DISABLE_X86_BMI2",
@@ -134,6 +145,7 @@ capability! {
     /// Proof that 128-bit PCLMULQDQ carry-less multiplication is available.
     Pclmulqdq,
     PCLMULQDQ_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-pclmulqdq",
     env = "TC_DISABLE_X86_PCLMULQDQ",
@@ -147,6 +159,7 @@ capability! {
     /// saving XMM/YMM state.
     PclmulqdqV256,
     PCLMULQDQ_V256_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-pclmulqdq-v256",
     env = "TC_DISABLE_X86_PCLMULQDQ_V256",
@@ -160,6 +173,7 @@ capability! {
     /// saving opmask and ZMM state.
     PclmulqdqV512,
     PCLMULQDQ_V512_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-pclmulqdq-v512",
     env = "TC_DISABLE_X86_PCLMULQDQ_V512",
@@ -176,6 +190,7 @@ capability! {
     /// checks CPUID leaf 1 EDX bit 26.
     Sse2,
     SSE2_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-sse2",
     env = "TC_DISABLE_X86_SSE2",
@@ -186,6 +201,7 @@ capability! {
     /// Proof that the current processor can execute SSE4.1 instructions.
     Sse41,
     SSE41_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-sse41",
     env = "TC_DISABLE_X86_SSE41",
@@ -196,6 +212,7 @@ capability! {
     /// Proof that the current processor can execute SSSE3 instructions.
     Ssse3,
     SSSE3_CACHE,
+    module = x86,
     arch = any(target_arch = "x86", target_arch = "x86_64"),
     feature = "disable-x86-ssse3",
     env = "TC_DISABLE_X86_SSSE3",
@@ -203,16 +220,40 @@ capability! {
 }
 
 /// Bouncy Castle-compatible BMI1 capability grouping.
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{bmi1, Bmi1X64};
+/// let token: Option<Bmi1X64> = bmi1::X64::detect();
+/// assert_eq!(token, Bmi1X64::detect());
+/// ```
 pub mod bmi1 {
     pub use super::Bmi1X64 as X64;
 }
 
 /// Bouncy Castle-compatible BMI2 capability grouping.
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{bmi2, Bmi2X64};
+/// let token: Option<Bmi2X64> = bmi2::X64::detect();
+/// assert_eq!(token, Bmi2X64::detect());
+/// ```
 pub mod bmi2 {
     pub use super::Bmi2X64 as X64;
 }
 
 /// Bouncy Castle-compatible PCLMULQDQ vector-width grouping.
+///
+/// Each width must be detected separately; a 128-bit token does not establish
+/// support for 256-bit or 512-bit instructions. The general
+/// `disable-x86-pclmulqdq` feature disables all three widths.
+///
+/// ```
+/// use tc_runtime::intrinsics::x86::{pclmulqdq, PclmulqdqV256, PclmulqdqV512};
+/// let v256: Option<PclmulqdqV256> = pclmulqdq::V256::detect();
+/// let v512: Option<PclmulqdqV512> = pclmulqdq::V512::detect();
+/// assert_eq!(v256, PclmulqdqV256::detect());
+/// assert_eq!(v512, PclmulqdqV512::detect());
+/// ```
 pub mod pclmulqdq {
     pub use super::{PclmulqdqV256 as V256, PclmulqdqV512 as V512};
 }

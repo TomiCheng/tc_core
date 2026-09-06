@@ -16,6 +16,7 @@ macro_rules! capability {
         $(#[$meta:meta])*
         $name:ident,
         $cache:ident,
+        module = $module:ident,
         arch = $arch:meta,
         feature = $feature:literal,
         env = $env:literal,
@@ -26,11 +27,36 @@ macro_rules! capability {
             $crate::intrinsics::detect::Cache::new();
 
         $(#[$meta])*
+        #[doc = concat!(
+            "\n\nObtain this token with [`Self::detect`]. It is `Copy`, so it can be ",
+            "passed to multiple backend calls. It does not enable compiler target ",
+            "features or validate any memory-safety requirements of an intrinsic.\n\n",
+            "Safe callers cannot construct the token directly:\n\n",
+            "```compile_fail,E0423\n",
+            "use tc_runtime::intrinsics::", stringify!($module), "::", stringify!($name), ";\n",
+            "let token = ", stringify!($name), "(());\n```",
+        )]
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub struct $name(());
 
         impl $name {
             /// Detects the capability and returns a proof token when available.
+            ///
+            /// Returns `None` on other architectures, when detection cannot
+            /// establish support, or when the capability is disabled. Use a
+            /// portable fallback in those cases rather than unwrapping.
+            #[doc = concat!(
+                "\n\n# Examples\n\n```\n",
+                "use tc_runtime::intrinsics::", stringify!($module), "::", stringify!($name), ";\n",
+                "fn select_backend(_proof: ", stringify!($name), ") -> &'static str {\n",
+                "    // A backend can require the token in its public signature.\n",
+                "    \"optimized\"\n}\n",
+                "let backend = match ", stringify!($name), "::detect() {\n",
+                "    Some(proof) => select_backend(proof),\n",
+                "    None => \"portable\",\n",
+                "};\n",
+                "assert_eq!(backend == \"optimized\", ", stringify!($name), "::is_enabled());\n```",
+            )]
             pub fn detect() -> Option<Self> {
                 Self::is_enabled().then_some(Self(()))
             }
@@ -41,7 +67,15 @@ macro_rules! capability {
                 "The `", $feature, "` Cargo feature always returns `false`. With ",
                 "this crate's `std` feature enabled, the `", $env, "` environment ",
                 "variable has the same effect when it is present before the first ",
-                "call.",
+                "call. Results are cached; configure overrides before detection starts. ",
+                "Disabling detection does not prevent the compiler from emitting ",
+                "instructions enabled by the build's target features.\n\n",
+                "Use [`Self::detect`] when a backend needs a proof token.\n\n",
+                "# Examples\n\n```\n",
+                "use tc_runtime::intrinsics::", stringify!($module), "::", stringify!($name), ";\n",
+                "assert_eq!(", stringify!($name), "::is_enabled(), ", stringify!($name), "::detect().is_some());\n",
+                "#[cfg(feature = ", stringify!($feature), ")]\n",
+                "assert!(!", stringify!($name), "::is_enabled());\n```",
             )]
             pub fn is_enabled() -> bool {
                 $cache.get_or_init(|| {
@@ -52,6 +86,15 @@ macro_rules! capability {
             }
 
             /// Reports whether the capability is enabled on this processor.
+            ///
+            /// Always returns `false` on this architecture. This method is
+            /// `const` here, so it can also be used in constant expressions.
+            #[doc = concat!(
+                "\n\n# Examples\n\n```\n",
+                "use tc_runtime::intrinsics::", stringify!($module), "::", stringify!($name), ";\n",
+                "const AVAILABLE: bool = ", stringify!($name), "::is_enabled();\n",
+                "assert!(!AVAILABLE);\n```",
+            )]
             #[cfg(not($arch))]
             pub const fn is_enabled() -> bool {
                 false
