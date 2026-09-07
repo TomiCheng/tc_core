@@ -18,25 +18,42 @@ backends so they can share it without depending on each other's layer.
 
 ## API
 
-| Item | Contract |
-| --- | --- |
-| `Choice::from_lsb(value)` | Keeps only the lowest bit of a `u8`; even inputs become zero and odd inputs become one |
-| `Choice::unwrap_u8()` | Reveals the choice as zero or one |
-| `!`, `&`, `\|`, `^` on `Choice` | Combine predicates without revealing bits or adding optimization barriers |
-| `ConditionallySelectable::conditional_select(a, b, choice)` | Returns `a` for zero or `b` for one, without value-dependent branches or memory addresses |
-| `conditional_assign` | Replaces a value for one and leaves it unchanged for zero |
-| `conditional_swap` | Swaps two values for one and leaves them unchanged for zero |
-| `ConditionallyNegatable::conditional_negate` | Negates in place with wrapping arithmetic for one |
-| `ConstantTimeEq::ct_eq(a, b)` | Returns a one choice for equality and zero otherwise, without early exit on a mismatch |
-| `ConstantTimeOrd::{ct_lt, ct_gt, ct_le, ct_ge}` | Numeric ordering that returns a `Choice` |
-| `fixed_time_eq(a, b)` | Compares byte slices and deliberately reveals a `bool` for public verification results |
+`Choice` holds one bit.
 
-| Types | Selection, assignment, swap | Wrapping negation | Equality | Ordering |
-| --- | --- | --- | --- | --- |
-| `u8`, `u16`, `u32`, `u64`, `u128`, `usize` | Yes | Yes | Yes | Yes |
-| `i8`, `i16`, `i32`, `i64`, `i128`, `isize` | Yes | Yes | Yes | Yes |
-| `[T; N]` | When supported by `T` | When supported by `T` | When supported by `T` | No |
-| `[T]` | No | No | When supported by `T` | No |
+- `Choice::from_lsb(value)` keeps only the lowest bit of a `u8`: even inputs
+  become zero and odd inputs become one.
+- `Choice::unwrap_u8()` reveals the choice as zero or one.
+- `!`, `&`, `|`, and `^` combine predicates without revealing bits or adding
+  optimization barriers.
+
+`ConditionallySelectable` applies masked updates.
+
+- `conditional_select(a, b, choice)` returns `a` for zero or `b` for one,
+  without value-dependent branches or memory addresses.
+- `conditional_assign(other, choice)` replaces a value for one and leaves it
+  unchanged for zero.
+- `conditional_swap(a, b, choice)` swaps two values for one and leaves them
+  unchanged for zero.
+
+The remaining traits compare and negate.
+
+- `ConstantTimeEq::ct_eq(a, b)` returns a one choice for equality and zero
+  otherwise, without an early exit on a mismatch.
+- `ConstantTimeOrd::{ct_lt, ct_gt, ct_le, ct_ge}` give numeric ordering as a
+  `Choice`.
+- `ConditionallyNegatable::conditional_negate` negates in place with wrapping
+  arithmetic for one.
+- `fixed_time_eq(a, b)` compares byte slices and deliberately reveals a `bool`
+  for public verification results.
+
+### Supported types
+
+- All primitive integers (`u8`, `u16`, `u32`, `u64`, `u128`, `usize`, `i8`,
+  `i16`, `i32`, `i64`, `i128`, `isize`): selection, assignment, swap, wrapping
+  negation, equality, and ordering.
+- Fixed-size arrays `[T; N]`: selection, assignment, swap, negation, and
+  equality whenever `T` supports them. No ordering.
+- Slices `[T]`: equality only, whenever `T` supports it.
 
 Array updates visit every element with the same choice. Assignment and swap
 operate element by element without copying the entire array. Equality scans all
