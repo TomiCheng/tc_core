@@ -2,9 +2,9 @@
 
 All notable changes to `tc_constant_time` are documented in this file.
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-09-07
 
-Initial release, prepared for publication on crates.io.
+Initial release.
 
 ### Added
 
