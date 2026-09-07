@@ -5,13 +5,15 @@ and mathematical code. Each crate is published separately and keeps its own
 README, changelog, and validation commands.
 
 [![CI](https://github.com/TomiCheng/tc_core/actions/workflows/ci.yml/badge.svg)](https://github.com/TomiCheng/tc_core/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](#license)
+![rustc](https://img.shields.io/badge/rustc-1.85+-blue.svg)
 
 ## Crates
 
-| Crate | Description |
-| --- | --- |
-| [`tc_constant_time`](tc_constant_time) | Masked selection, comparison, ordering, and conditional arithmetic without value-dependent branches. No dependencies, no feature flags, no `alloc`, no `unsafe`. |
-| [`tc_runtime`](tc_runtime) | CPU feature detection and capability proof tokens for x86 and AArch64, used to select an optimized backend at runtime. Dependency-free by default; optional `std` and `aarch64-detect` features. |
+| Crate | Version | Description |
+| --- | --- | --- |
+| [`tc_constant_time`](tc_constant_time) | [![crates.io](https://img.shields.io/crates/v/tc_constant_time.svg)](https://crates.io/crates/tc_constant_time) [![docs.rs](https://docs.rs/tc_constant_time/badge.svg)](https://docs.rs/tc_constant_time) | Masked selection, comparison, ordering, and conditional arithmetic without value-dependent branches. No dependencies, no feature flags, no `alloc`, no `unsafe`. |
+| [`tc_runtime`](tc_runtime) | [![crates.io](https://img.shields.io/crates/v/tc_runtime.svg)](https://crates.io/crates/tc_runtime) [![docs.rs](https://docs.rs/tc_runtime/badge.svg)](https://docs.rs/tc_runtime) | CPU feature detection and capability proof tokens for x86 and AArch64, used to select an optimized backend at runtime. Dependency-free by default; optional `std` and `aarch64-detect` features. |
 
 `tc_constant_time` provides timing primitives rather than mathematical
 operations, so cryptographic algorithms and mathematical backends can share it
