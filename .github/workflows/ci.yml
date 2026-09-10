@@ -185,6 +185,10 @@ jobs:
         env:
           # Keep unpacked package manifests outside rust-cache's build tree.
           CARGO_TARGET_DIR: ${{ runner.temp }}/tc-constant-time-package
+      - run: cargo package --locked -p tc_zeroize
+        env:
+          # Keep unpacked package manifests outside rust-cache's build tree.
+          CARGO_TARGET_DIR: ${{ runner.temp }}/tc-zeroize-package
 
   portable:
     name: Cross-architecture contracts
