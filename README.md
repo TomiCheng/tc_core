@@ -14,17 +14,20 @@ README, changelog, and validation commands.
 | --- | --- | --- |
 | [`tc_constant_time`](tc_constant_time) | [![crates.io](https://img.shields.io/crates/v/tc_constant_time.svg)](https://crates.io/crates/tc_constant_time) [![docs.rs](https://docs.rs/tc_constant_time/badge.svg)](https://docs.rs/tc_constant_time) | Masked selection, comparison, ordering, and conditional arithmetic without value-dependent branches. No dependencies, no feature flags, no `alloc`, no `unsafe`. |
 | [`tc_runtime`](tc_runtime) | [![crates.io](https://img.shields.io/crates/v/tc_runtime.svg)](https://crates.io/crates/tc_runtime) [![docs.rs](https://docs.rs/tc_runtime/badge.svg)](https://docs.rs/tc_runtime) | CPU feature detection and capability proof tokens for x86 and AArch64, used to select an optimized backend at runtime. Dependency-free by default; optional `std` and `aarch64-detect` features. |
+| [`tc_zeroize`](tc_zeroize) | [![crates.io](https://img.shields.io/crates/v/tc_zeroize.svg)](https://crates.io/crates/tc_zeroize) [![docs.rs](https://docs.rs/tc_zeroize/badge.svg)](https://docs.rs/tc_zeroize) | Explicit memory erasure through volatile writes, with an opt-in drop guard and a marker for types that clear themselves. Dependency-free; a default-off `alloc` feature adds `Vec<T>` and `Box<T>`. |
 
 `tc_constant_time` provides timing primitives rather than mathematical
 operations, so cryptographic algorithms and mathematical backends can share it
 without depending on each other. `tc_runtime` decides which backend runs;
-`tc_constant_time` governs how a backend handles secret values. Neither depends
-on the other.
+`tc_constant_time` governs how a backend handles secret values; `tc_zeroize`
+covers what happens to a secret once it is no longer needed. None of the three
+depends on the others.
 
 ## Requirements
 
-Rust 1.85 or later, edition 2024. Every crate builds without `std` and without
-heap allocation.
+Rust 1.85 or later, edition 2024. Every crate builds without `std`, and none of
+them allocates. Heap-backed types are reached only through `tc_zeroize`'s
+default-off `alloc` feature.
 
 ## Workspace checks
 

@@ -27,3 +27,7 @@ version = "0.1.0"
 dependencies = [
  "cpufeatures",
 ]
+
+[[package]]
+name = "tc_zeroize"
+version = "0.1.0"
