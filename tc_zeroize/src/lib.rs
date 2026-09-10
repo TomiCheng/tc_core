@@ -83,11 +83,8 @@
 //! leaking it, or aborting the process bypasses its cleanup. If a custom `zeroize`
 //! implementation panics, composite erasure can remain incomplete.
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
+// no std
 
-#[cfg(feature = "alloc")]
-mod alloc_impls;
 mod array;
 mod maybe_uninit;
 mod option;
@@ -98,3 +95,11 @@ mod zeroizing;
 
 pub use traits::{Zeroize, ZeroizeOnDrop};
 pub use zeroizing::Zeroizing;
+
+// alloc
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[cfg(feature = "alloc")]
+mod alloc_impls;
